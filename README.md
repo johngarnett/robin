@@ -11,7 +11,7 @@ using N / 2 venues. Each venue serves as the home to two teams.
 
 Here are the constraints imposed by this program by default.
 
-* Each teams plays once per week.
+* Each team plays once per week.
 * Each team plays every other team exactly once.
 * Each team plays half of its games in its home venue and half away as the
   visiting team in the other venues.
