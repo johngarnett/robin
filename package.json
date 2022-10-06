@@ -1,0 +1,14 @@
+{
+  "name": "robin",
+  "version": "1.0.0",
+  "description": "Create an ideal round robin schedule for 2 * N teams playing at N venues, with each venue being the home of two of the teams.",
+  "main": "robin.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "John Garnett",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^9.4.1"
+  }
+}
