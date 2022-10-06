@@ -203,7 +203,7 @@ You can read more about the supported regular expression syntax here.
 
 ## RANDOMNESS
 
-If you like the randomize the schedule as much as possible, use the --random flag.
+If you would like to randomize the schedule as much as possible, use the --random flag.
 
     node robin.js --venues=5 --verbose --output=schedule.csv --random
 
