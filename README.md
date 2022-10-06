@@ -76,14 +76,16 @@ initialization file from being used, you may use the --brute flag.
 
 The init5.csv file looks like this.
 
->	a2	b1	c2	d1	e2
->	a1	b2	c1	d2	e1
->	a2
->	a1
->	a2
->	a1
->	a2
->	a1
+~~~
+a2	b1	c2	d1	e2
+a1	b2	c1	d2	e1
+a2
+a1
+a2
+a1
+a2
+a1
+~~~
 
 This constrains the home teams for all venues in the first two weeks. For the
 remaining weeks, only the first venue is constrained. When this initialization
@@ -150,16 +152,18 @@ time node robin.js --venues=6 --verbose --output=schedule.csv --pattern=pattern6
 When --pattern is used, The specified pattern file (pattern6.csv in this case) will be
 used instead of the init?.csv default pattern files.
 
->	a1,f2	b1,e2	c1,d2	d1,b2	e1,a2	f1,c2
->	a2,f1	b2,e1	c2,d1	d2,b1	e2,a1	f2,c1
->	a1,d1	b2	c1,b1	d2,f1	e1	f2,e2
->	a2,b1	b2,[cde].	c2,f2	d2	,d1	f1,e1
->	.1,.1
->	a2
->	a1
->	a2
->	a1
->	a2
+~~~
+a1,f2	b1,e2	c1,d2	d1,b2	e1,a2	f1,c2
+a2,f1	b2,e1	c2,d1	d2,b1	e2,a1	f2,c1
+a1,d1	b2	c1,b1	d2,f1	e1	f2,e2
+a2,b1	b2,[cde].	c2,f2	d2	,d1	f1,e1
+.1,.1
+a2
+a1
+a2
+a1
+a2
+~~~
 
 Note that the pattern file should not include any weeks in which sister teams
 play each other ("sister teams" meaning two teams that share the same home venue).
@@ -234,11 +238,13 @@ If you would like to use the short codes for the actual venues and teams, you ca
 using the --names flag to specify a file which contains the actual names. Look at the names5.csv
 file as an example.
 
->   ACE SLAP DOOM
->   C80 QP PACK
->   WBUF TEAM YAK
->   RBOT KOR SHOTS
->   VTAP AB STALL
+~~~
+ACE SLAP DOOM
+C80 QP PACK
+WBUF TEAM YAK
+RBOT KOR SHOTS
+VTAP AB STALL
+~~~
 
 In this case, there are five venues ACE, C80, WBUF, RBOT, and VTAP. The ACE venue has two home
 teams, SLAP and DOOM. The C80 venue has QP and PACK as its home teams. Be sure to include
@@ -249,11 +255,13 @@ teams.
 
 In this case, the output will begin something like this.
 
->	"Found a schedule!"
->	week	venue	home	away
->	1	ACE	DOOM	AB
->	1	C80	QP	SHOTS
->	1	WBUF	YAK	PACK
+~~~
+"Found a schedule!"
+week	venue	home	away
+1	ACE	DOOM	AB
+1	C80	QP	SHOTS
+1	WBUF	YAK	PACK
+~~~
 
 If you would like to assign a different venue to A, just enter your venues and teams
 in a different order.
