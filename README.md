@@ -199,7 +199,7 @@ The part before the comma is empty.
 
 You can read more about the supported regular expression syntax here.
 
-    https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp
+   https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp
 
 ## RANDOMNESS
 
