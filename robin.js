@@ -54,6 +54,9 @@ program
    .option('--pattern <filename>', 'Add some constraints to make the search go faster.')
    .option('--debug', 'Include any debug output', false)
    .option('--mnp', 'Use Monday Night Pinball (MNP) CSV format for outputting the schedule.', false)
+   .option('--groups <filename>', 'Indicate group membership for use with the --intra and --inter flags.')
+   .option('--intra', 'Only schedule matches between teams belonging to the same group (see --groups).', false)
+   .option('--inter', 'Only schedule matches between teams belonging to different groups (see --groups).', false)
 
 program.parse()
 
@@ -113,6 +116,9 @@ verbose(['Deadends encountered', Number(deadend).toLocaleString()])
 */
 
 function initialize() {
+   if (options.groups) {
+      loadGroups(options.groups)
+   }
    if (options.pattern) {
       return loadPattern(options.pattern)
    }
@@ -137,9 +143,7 @@ function search(isHome, iweek, ivenue, schedule) {
    if (iweek == NUMBER_OF_WEEKS) {
       return foundIt(schedule)
    }
-   // (week.locked == true) means that the home team assignment is unchangeable for all venues in this week.
-
-   if (isHome && !week.locked) {
+   if (isHome) {
       return considerHomeCandidates(iweek, ivenue, schedule, week, v)
    } else {
       return considerAwayCandidates(teams, iweek, ivenue, week, v)
@@ -147,8 +151,12 @@ function search(isHome, iweek, ivenue, schedule) {
 }
 
 function considerHomeCandidates(week, ivenue, schedule, w, v) {
-   if (schedule[week].assignments[ivenue].homeLocked) {
-      return search(AWAY, week, ivenue, schedule)
+   if (w.assignments[ivenue].homeLocked) {
+      if (w.assignments[ivenue].awayLocked) {
+         return homeSearch(week, ivenue, schedule)
+      } else {
+         return search(AWAY, week, ivenue, schedule)
+      }
    }
    var ts = reorderTeams(v, v.teams)
 
@@ -160,7 +168,9 @@ function considerHomeCandidates(week, ivenue, schedule, w, v) {
          return
       }
       if (assignment.homeRegex && !assignment.homeRegex.test(team.canon)) {
-         debug('considerHomeCandidates: ' + team.canon + ' did not match regex: ' + assignment.homeRegex.toString())
+         if (options.debug) {
+            log('considerHomeCandidates: ' + team.canon + ' did not match regex: ' + assignment.homeRegex.toString())
+         }
          return
       }
       if (team.home < team.maxHome) {
@@ -252,9 +262,9 @@ function fresh(teams, opponents) {
 
    teams.forEach(team => {
       if (opponents[team.id]) {
-         oteams.push(team)
-      } else {
          oteams.unshift(team)
+      } else {
+         oteams.push(team)
       }
    })
    return oteams
@@ -321,12 +331,22 @@ function sister(schedule) {
 
 // filterAway: remove teams which have already played this week, or already played this opponent, or already played in the venue, ...
 
-function filterAway(teams, ivenue, w, v) {
-   return teams.filter(team => {
+function filterAway(oteams, ivenue, w, v) {
+   var home = w.assignments[ivenue].home
+
+   return oteams.filter(team => {
       var assignment = w.assignments[v.id]
 
       if (assignment.awayRegex && !assignment.awayRegex.test(team.canon)) {
-         debug('filterAway: ' + team.canon + ' did not match regex: ' + assignment.awayRegex.toString())
+         if (options.debug) {
+            log('filterAway: ' + team.canon + ' did not match regex: ' + assignment.awayRegex.toString())
+         }
+         return false
+      }
+      if (options.inter && (teams[home].group == team.group)) {
+         return false
+      }
+      if (options.intra && (teams[home].group != team.group)) {
          return false
       }
       if (team.ivenue == ivenue) {
@@ -514,9 +534,11 @@ function output(schedule, filename) {
             teamName(schedule[week].assignments[venue].home),
             teamName(schedule[week].assignments[venue].away)
          ]
-
          if (options.mnp) {
             elements.push("FALSE")
+         }
+         if (options.debug) {
+            elements.push(teams[schedule[week].assignments[venue].away].group == teams[schedule[week].assignments[venue].home].group)
          }
          var data = elements.join("\t")
 
@@ -540,26 +562,32 @@ function readNames() {
    }
    var result = {
       venues: [],
-      teams: []
+      teams: [],
+      teamLookup: {}
    }
    var lines = readFile(options.names)
 
    if (lines.length != NUMBER_OF_VENUES) {
-      console.log('The ' + options.names + ' file must contain one line per venue.')
-      return
+      console.log('Error: the ' + options.names + ' file must contain one line per venue.')
+      exit(5)
    }
    for (var i = 0; i < lines.length; i++) {
       var line = lines[i]
       var match = line.split(/\s+/)
 
       result.venues.push(match[0])
+
       result.teams.push(match[1])
+      result.teamLookup[match[1]] = result.teams.length - 1
+
       result.teams.push(match[2])
+      result.teamLookup[match[2]] = result.teams.length - 1
    }
    return result
 }
 
 function analyze() {
+   // TODO
    var teamStats = new Array(NUMBER_OF_TEAMS)
    var venueStats = new Array(NUMBER_OF_VENUES)
 
@@ -595,7 +623,7 @@ function loadPattern(filename) {
 
       if (words.length > NUMBER_OF_VENUES) {
          console.log("Error: More patterns than venues in: " + line)
-         return
+         exit(2)
       }
 
       for (var j = 0; j < words.length; j++) {
@@ -664,6 +692,34 @@ function calculateTeamIndex(team) {
    return 2 * base + suffix - 1
 }
 
+function loadGroups(filename) {
+   if (!options.names) {
+      console.log('Error: the --groups flag must be used together with the --names flag.')
+      exit(3)
+   }
+   var lines = readFile(filename)
+   var groups = {}
+   var gid = 1
+
+    lines.forEach(line => {
+       var parts = line.split(/\s+/)
+       var id = lookupTeam(parts[0])
+
+       if (id === undefined) {
+          console.log('Error: loadGroups() could not find team ' + parts[0] + ' in ' + options.names)
+          exit(6)
+       }
+       if (groups[parts[1]] === undefined) {
+          groups[parts[1]] = gid++
+       }
+       teams[id].group = groups[parts[1]]
+    })
+}
+
+function lookupTeam(team) {
+   return names.teamLookup[team]
+}
+
 function boolean(value) {
    return (value == 1) ? true : false
 }
@@ -700,5 +756,10 @@ function readFile(filename) {
       return lines
    } catch (e) {
       console.log('Error:', e.stack)
+      exit(4)
    }
+}
+
+function exit(code) {
+   process.exit(code)
 }
