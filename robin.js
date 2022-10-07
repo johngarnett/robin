@@ -73,24 +73,33 @@ const ALLOW_REPEAT_VISITORS = options.relax
 const TEAM_NAME_PATTERN = /^[a-z][12]$/
 const NUMBER_OF_VENUES = options.venues
 const NUMBER_OF_TEAMS = 2 * NUMBER_OF_VENUES
-const NUMBER_OF_WEEKS = nWeeks
-const MAX_HOME = Math.ceil(NUMBER_OF_WEEKS / 2)
 const LOWER = 'abcdefghijklmnopqrstuvwxyz0123456789'
 const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 const HOME = true
 const AWAY = false
 
+var NUMBER_OF_WEEKS
+var MAX_HOME
+
+setWeeks(nWeeks)
+
+var SOLO = {
+   count: 0,
+   max: 0,
+}
+
 var START_WEEK = 0
-
 var played = new Array(NUMBER_OF_TEAMS)
-
 var found = false
 var deadend = 0
-
 var names = readNames()
 var teams = makeTeams()
 var venues = makeVenues()
 var schedule = makeWeeks()
+
+SOLO.max = Math.floor(SOLO.count / 2)
+
+verbose(['SOLO', SOLO])
 
 initialize()
 
@@ -102,18 +111,10 @@ search(HOME, START_WEEK, 0, schedule)
 
 verbose(['Deadends encountered', Number(deadend).toLocaleString()])
 
-/*
-   Assumptions (using --weeks=5 as an example):
-
-   a2 b1 c2 d1 e2
-   a1 b2 c1 d2 e1
-   a2
-   a1
-   a2
-   a1
-   a2
-   a1
-*/
+function setWeeks(n) {
+   NUMBER_OF_WEEKS = n
+   MAX_HOME = Math.ceil(n / 2)
+}
 
 function initialize() {
    if (options.groups) {
@@ -133,10 +134,7 @@ function initialize() {
    verbose('Could not find file: ' + filename)
 }
 
-function search(isHome, iweek, ivenue, schedule) {
-   var week = schedule[iweek]
-   var v = venues[ivenue]
-
+function search(isHome, iweek, ivenue) {
    if (found) {
       return true
    }
@@ -144,65 +142,107 @@ function search(isHome, iweek, ivenue, schedule) {
       return foundIt(schedule)
    }
    if (isHome) {
-      return considerHomeCandidates(iweek, ivenue, schedule, week, v)
+      return considerHomeCandidates(iweek, ivenue)
    } else {
-      return considerAwayCandidates(teams, iweek, ivenue, week, v)
+      return considerAwayCandidates(iweek, ivenue)
    }
 }
 
-function considerHomeCandidates(week, ivenue, schedule, w, v) {
+function considerHomeCandidates(iweek, ivenue) {
+   var w = schedule[iweek]
+   var v = venues[ivenue]
+   var assignment = w.assignments[ivenue]
+
    if (w.assignments[ivenue].homeLocked) {
+      var team = teams[w.assignments[ivenue].home]
+
+      if (team.empty) {
+         return continueFromEmpty(iweek, ivenue, assignment, team, v, w)
+      }
       if (w.assignments[ivenue].awayLocked) {
-         return homeSearch(week, ivenue, schedule)
+         return homeSearch(iweek, ivenue)
       } else {
-         return search(AWAY, week, ivenue, schedule)
+         return search(AWAY, iweek, ivenue)
       }
    }
-   var ts = reorderTeams(v, v.teams)
+   var ts = filterHome(assignment, v, w)
 
    ts.forEach(team => {
-      var assignment = w.assignments[v.id]
+      if (team.empty) {
+         w.solo.empty++
+         continueFromEmpty(iweek, ivenue, assignment, team, v, w)
+         w.solo.empty--
+         return
+      }
+      var recentHomeTeam = v.recentHomeTeam;
 
+      v.recentHomeTeam = team.id
+      assignment.home = team.id
+      w.playing[team.id] = true
+      team.home++
+      if (team.solo) {
+         w.solo.full++
+      }
+
+      search(AWAY, iweek, ivenue)
+
+      if (!found) {
+         deadend++
+      }
+      if (team.solo) {
+         w.solo.full--
+      }
+      team.home--
+      w.playing[team.id] = false
+
+      // Restore recentHomeTeam to what it was prior to calling search(...)
+      v.recentHomeTeam = recentHomeTeam
+   })
+}
+
+function filterHome(assignment, v, w) {
+   var ts = v.teams.filter(team => {
+      if (v.solo && (SOLO.max > 0)) {
+         if (!team.empty && (w.solo.full == SOLO.max)) {
+            return false
+         }
+         if (team.empty && (w.solo.empty == SOLO.max)) {
+            return false
+         }
+      }
+      if (team.home >= team.maxHome) {
+         return false
+      }
+      if (team.empty && (assignment.awayLocked || assignment.awayRegex)) {
+         // Cannot leave this venue empty if the away team was specified in a pattern file.
+         return false
+      }
       if (w.playing[team.id]) {
          // Already playing this week
-         return
+         return false
       }
       if (assignment.homeRegex && !assignment.homeRegex.test(team.canon)) {
          if (options.debug) {
             log('considerHomeCandidates: ' + team.canon + ' did not match regex: ' + assignment.homeRegex.toString())
          }
-         return
+         return false
       }
-      if (team.home < team.maxHome) {
-         var recentHomeTeam = v.recentHomeTeam;
-
-         v.recentHomeTeam = team.id
-         assignment.home = team.id
-         w.playing[team.id] = true
-         team.home++
-
-         search(AWAY, week, ivenue, schedule)
-
-         if (!found) {
-            deadend++
-         }
-         team.home--
-         w.playing[team.id] = false
-
-         // Restore recentHomeTeam to what it was
-
-         v.recentHomeTeam = recentHomeTeam
-      }
+      return true
    })
+   return reorderTeams(v, ts)
 }
 
-function considerAwayCandidates(teams, week, ivenue, w, v) {
-   var assignments = schedule[week].assignments[ivenue]
+function considerAwayCandidates(iweek, ivenue) {
+   var w = schedule[iweek]
+   var v = venues[ivenue]
+   var assignment = w.assignments[ivenue]
 
-   if (assignments.awayLocked) {
-      setPlayed(assignments.home, assignments.away, true)
-      homeSearch(week, ivenue, schedule)
-      setPlayed(assignments.home, assignments.away, false)
+   if (assignment.awayLocked) {
+      var team = teams[assignment.away]
+
+      setPlayed(assignment.home, assignment.away, true)
+      homeSearch(iweek, ivenue)
+      setPlayed(assignment.home, assignment.away, false)
       return
    }
    var oteams = filterAway(teams, ivenue, w, v)
@@ -211,7 +251,7 @@ function considerAwayCandidates(teams, week, ivenue, w, v) {
       oteams = randomize(oteams)
    }
    if (options.relax) {
-      // Move fresh opponents to the front of the queue
+      // Move new opponents to the end so that they will be considered first.
       oteams = fresh(oteams, v.opponents)
    }
    // Considering candidates in reverse order appears to produce better results.
@@ -223,6 +263,9 @@ function considerAwayCandidates(teams, week, ivenue, w, v) {
 
       // Record this assignment.
 
+      if (team.solo) {
+         w.solo.away++
+      }
       team.away++
       v.opponents[team.id] = true
       w.playing[team.id] = true
@@ -230,13 +273,16 @@ function considerAwayCandidates(teams, week, ivenue, w, v) {
 
       w.assignments[v.id].away = team.id
 
-      homeSearch(week, ivenue, schedule)
+      homeSearch(iweek, ivenue)
 
       if (!found) {
          deadend++
       }
       // Erase this abandoned assignment from the records.
 
+      if (team.solo) {
+         w.solo.away--
+      }
       team.away--
       v.opponents[team.id] = po
       w.playing[team.id] = false
@@ -249,11 +295,23 @@ function setPlayed(home, team, value) {
    played[team][home] = value
 }
 
-function homeSearch(week, ivenue, schedule) {
+function continueFromEmpty(week, ivenue, assignment, team, v, w) {
+   var recentHomeTeam = v.recentHomeTeam;
+
+   assignment.empty = true
+   v.recentHomeTeam = team.id
+
+   homeSearch(week, ivenue)
+
+   assignment.empty = false
+   v.recentHomeTeam = recentHomeTeam
+}
+
+function homeSearch(week, ivenue) {
    if ((ivenue + 1) == NUMBER_OF_VENUES) {
-      search(HOME, week + 1, 0, schedule)
+      search(HOME, week + 1, 0)
    } else {
-      search(HOME, week, ivenue + 1, schedule)
+      search(HOME, week, ivenue + 1)
    }
 }
 
@@ -291,17 +349,19 @@ function random(n) {
    return Math.floor(Math.random() * (n + 1))
 }
 
-function foundIt(schedule) {
+function foundIt() {
    verbose('Found a schedule!')
    found = true
-   sister(schedule)
+   sister()
    debug(schedule)
-   output(schedule, options.output)
-   // analyze(schedule) // TODO
+   output(options.output)
+   // analyze() // TODO
    return true
 }
 
-function sister(schedule) {
+// TODO: fix sister for solo teams
+
+function sister() {
    if (options.sister == "none") {
       return
    }
@@ -337,6 +397,12 @@ function filterAway(oteams, ivenue, w, v) {
    return oteams.filter(team => {
       var assignment = w.assignments[v.id]
 
+      if (team.solo && (w.solo.away == SOLO.max)) {
+         return false
+      }
+      if (team.empty) {
+         return false
+      }
       if (assignment.awayRegex && !assignment.awayRegex.test(team.canon)) {
          if (options.debug) {
             log('filterAway: ' + team.canon + ' did not match regex: ' + assignment.awayRegex.toString())
@@ -378,6 +444,9 @@ function filterAway(oteams, ivenue, w, v) {
 // This attempts to avoid giving a team too many consecutive away games.
 
 function reorderTeams(v, teams) {
+   if (teams.length != 2) {
+      return teams
+   }
    if (options.random) {
       var r = random(1)
 
@@ -401,15 +470,21 @@ function makeTeams() {
    var teams = []
    var limit = NUMBER_OF_TEAMS / 2
    var maxHomeSister = MAX_HOME
-   var maxHomePrime = NUMBER_OF_WEEKS - maxHomeSister
+   var maxHomePrime = (options.intra) ? MAX_HOME : (NUMBER_OF_WEEKS - maxHomeSister)
 
    for (var i = 0; i < limit; i++) {
       const primeId = 2 * i
       const sisterId = 2 * i + 1
+      var t1 = makeTeam(i, primeId, maxHomePrime)
+      var t2 = makeTeam(i, sisterId, maxHomeSister)
       
-      teams.push(makeTeam(i, primeId, maxHomePrime))
-      teams.push(makeTeam(i, sisterId, maxHomeSister))
+      teams.push(t1)
+      teams.push(t2)
 
+      if (options.names && names.teams[t2.id] == null) {
+         t1.solo = true
+         t2.empty = true
+      }
       played[primeId] = new Array(NUMBER_OF_TEAMS)
       played[sisterId] = new Array(NUMBER_OF_TEAMS)
    }
@@ -426,12 +501,13 @@ function makeTeam(i, id, maxHome) {
       ivenue: i,
       maxHome: maxHome,
       home: 0,
-      away: 0
+      away: 0,
+      solo: false
    }
 }
 
 function teamName(id) {
-   if (names) {
+   if (names && names.teams[id]) {
       return names.teams[id]
    }
    return canonName(id)
@@ -451,12 +527,17 @@ function makeVenues() {
    for (var i = 0; i < NUMBER_OF_VENUES; i++) {
       var venue = {
          id: i,
+         solo: false,
          name: venueName(i),
          teams: [teams[2 * i], teams[2 * i + 1]],
          opponents: new Array(NUMBER_OF_TEAMS),
          recentHomeTeam: undefined
       }
 
+      if (venue.teams[0].empty || venue.teams[1].empty) {
+         venue.solo = true
+         SOLO.count++
+      }
       venues.push(venue)
       teams.forEach(team => {
          venue.opponents[team.id] = false
@@ -483,10 +564,15 @@ function makeWeeks() {
 
 function makeWeek() {
    var assignments = new Array(NUMBER_OF_VENUES)
-   var week = {}
-
-   week.assignments = assignments
-   week.playing = new Array(NUMBER_OF_TEAMS)
+   var week = {
+      assignments: assignments,
+      playing: new Array(NUMBER_OF_TEAMS),
+      solo: {
+         empty: 0,
+         full: 0,
+         away: 0
+      }
+   }
 
    venues.forEach(venue => {
       assignments[venue.id] =  makeMatch(null, null)
@@ -502,11 +588,14 @@ function makeMatch(home, away) {
       home: home,
       away: away,
       homeLocked: false,
-      awayLocked: false
+      awayLocked: false,
+      homeRegex: null,
+      awayRegex: null,
+      empty: false
    }
 }
 
-function output(schedule, filename) {
+function output(filename) {
    var stream
 
    if (filename) {
@@ -528,6 +617,10 @@ function output(schedule, filename) {
    }
    for (var week = 0; week < schedule.length; week++) {
       for (var venue = 0; venue < NUMBER_OF_VENUES; venue++) {
+         if (schedule[week].assignments[venue].empty) {
+            // debug(['empty venue (week, venue)', week, venue])
+            continue
+         }
          elements = [
             week + 1,
             venueName(venue),
@@ -566,6 +659,7 @@ function readNames() {
       teamLookup: {}
    }
    var lines = readFile(options.names)
+   var nTeams = 0
 
    if (lines.length != NUMBER_OF_VENUES) {
       console.log('Error: the ' + options.names + ' file must contain one line per venue.')
@@ -576,18 +670,35 @@ function readNames() {
       var match = line.split(/\s+/)
 
       result.venues.push(match[0])
-
       result.teams.push(match[1])
       result.teamLookup[match[1]] = result.teams.length - 1
+      nTeams++
 
-      result.teams.push(match[2])
-      result.teamLookup[match[2]] = result.teams.length - 1
+      if (match.length == 3) {
+         result.teams.push(match[2])
+         result.teamLookup[match[2]] = result.teams.length - 1
+         nTeams++
+      } else {
+         // The venue hosts only one team.
+         result.teams.push(null)
+      }
+   }
+   if (!options.weeks) {
+      setWeeks(nTeams - 2)
    }
    return result
 }
 
 function analyze() {
-   // TODO
+   // TODO: compile various stats and correctness checks of interest
+   // For example:
+   // * for each team, largest sequence of consecutive away games
+   // * number of home games, number of away games
+   // * number of unique opponents appearing in each venue
+   // * number of unique opponents faced by each team
+   // * number of unique venues played in by each team
+   // * season in which this team was most recently played previously
+
    var teamStats = new Array(NUMBER_OF_TEAMS)
    var venueStats = new Array(NUMBER_OF_VENUES)
 
@@ -604,16 +715,15 @@ function analyze() {
          venueStats[venue.id].opponents[week.assignments[venue.id].away] = true
       })
    })
-
-   log(venueStats)
-   log(teamStats)
+   debug(venueStats)
+   debug(teamStats)
 }
 
 function loadPattern(filename) {
    var lines = readFile(filename)
 
    if (lines.length > NUMBER_OF_WEEKS) {
-      log('Warning: ' + filename + ' contains more rows than the number of weeks in the schedule.')
+      log('Warning: ' + filename + ' contains more rows than the number of weeks in the schedule: ' + NUMBER_OF_WEEKS)
    }
    var limit = (lines.length > NUMBER_OF_WEEKS) ? NUMBER_OF_WEEKS : lines.length
 
@@ -645,6 +755,10 @@ function setHome(week, venue, word) {
    if (!word || (word == '')) {
       return
    }
+   if (week >= NUMBER_OF_WEEKS) {
+      console.log("Warning: pattern file contains data for too many weeks.")
+      return
+   }
    var week = schedule[week]
    var assignment = week.assignments[venue]
 
@@ -655,6 +769,11 @@ function setHome(week, venue, word) {
       assignment.home = team.id
       assignment.homeLocked = true
       week.playing[team.id] = true
+      if (team.solo) {
+         week.solo.full++
+      } else if (team.empty) {
+         week.solo.empty++
+      }
       team.home++
    } else {
       debug('setHome: creating regular expression from ' + word)
@@ -674,6 +793,9 @@ function setAway(week, venue, word) {
 
       if (assignment.homeLocked) {
          setPlayed(assignment.home, team.id, true)
+      }
+      if (team.solo) {
+         week.solo.away++
       }
       assignment.away = team.id
       assignment.awayLocked = true
