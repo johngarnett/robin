@@ -147,7 +147,7 @@ season duration appropriately.
 
 If you would like to add your own constraints, you may do that using the --pattern flag.
 
-    node robin.js --venues=6 --verbose --output=schedule.csv --pattern=pattern6.csv
+    node robin.js --venues=6 --verbose --output=schedule.csv --pattern=config/pattern6.csv
 
 When --pattern is used, The specified pattern file (pattern6.csv in this case) will be
 used instead of the init?.csv default pattern files.
