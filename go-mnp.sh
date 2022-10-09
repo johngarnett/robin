@@ -1,1 +1,1 @@
-node robin.js --venues=16 --weeks=10 --groups=config/groups-mnp.csv --names=config/names-mnp.csv --intra --brute --output=solution-mnp.csv  --history=config/history-mnp.csv --sister=none --mnp --duplicates=0  --pattern=config/pattern-mnp.csv --pairs=config/pairs-mnp.csv $*
+time node robin.js --venues=16 --weeks=10 --groups=config/groups-mnp.csv --names=config/names-mnp.csv --intra --brute --output=solution-mnp.csv  --history=config/history-mnp.csv --sister=last --mnp --duplicates=0  --pattern=config/pattern-mnp.csv --pairs=config/pairs-mnp.csv $*
