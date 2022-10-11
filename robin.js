@@ -22,7 +22,7 @@
 const fs = require('fs')
 const { program } = require('commander')
 
-const { lower, upper, exit, random, randomize, readFile, writeFile } = require('./support')
+const { split, lower, upper, exit, random, randomize, readFile, writeFile } = require('./support')
 const history = require('./history')
 
 const DEFAULT_VENUES = 5
@@ -735,7 +735,7 @@ function readNames() {
    }
    for (var i = 0; i < lines.length; i++) {
       var line = lines[i]
-      var match = line.split(WHITESPACE)
+      var match = split(line, WHITESPACE)
 
       result.venues.push(match[0])
       result.teams.push(match[1])
@@ -768,7 +768,7 @@ function loadPattern(filename) {
 
    for (var i = 0; i < limit; i++) {
       var line = lines[i]
-      var words = line.split(WHITESPACE)
+      var words = split(line, WHITESPACE)
 
       if (words.length > NUMBER_OF_VENUES) {
          console.log("Error: More patterns than venues in: " + line)
@@ -777,7 +777,7 @@ function loadPattern(filename) {
 
       for (var j = 0; j < words.length; j++) {
          if (words[j].includes(",")) {
-            var parts = words[j].split(",")
+            var parts = split(words[j], ",")
 
             setHome(i, j, parts[0])
             setAway(i, j, parts[1])
@@ -863,7 +863,7 @@ function loadGroups(filename) {
    var gid = 1
 
     lines.forEach(line => {
-       var parts = line.split(WHITESPACE)
+       var parts = split(line, WHITESPACE)
        var id = lookupTeam(parts[0])
 
        if (id === undefined) {
@@ -886,7 +886,7 @@ function loadPairs(filename) {
    var lines = readFile(filename)
 
    lines.forEach(line => {
-      var ts = line.split(WHITESPACE)
+      var ts = split(line, WHITESPACE)
 
       if (ts.length != 2) {
          console.log('Error: each line of the ' + filename + ' file must reference two teams.')

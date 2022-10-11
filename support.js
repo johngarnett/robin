@@ -36,6 +36,15 @@ function readFile(filename) {
    }
 }
 
+function split(line, pattern) {
+    var parts = line.split(pattern)
+
+    if (parts[parts.length - 1] == '') {
+        parts.pop()
+    }
+    return parts
+}
+
 // Fisher-Yates random shuffle of an array.
 
 function randomize(a) {
@@ -68,3 +77,4 @@ exports.writeFile = writeFile
 exports.exit = exit
 exports.lower = lower
 exports.upper = upper
+exports.split = split
