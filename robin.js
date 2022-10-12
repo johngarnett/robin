@@ -26,6 +26,7 @@ const { split, lower, upper, exit, random, randomize, readFile, writeFile } = re
 const history = require('./history')
 
 const DEFAULT_VENUES = 5
+const CONFIG = './config'
 
 program
    .option('-v, --verbose', 'Display informational messages during execution of the scheduler.', false)
@@ -119,7 +120,7 @@ function initialize() {
    if (options.brute) {
       return
    }
-   var filename = './config/init' + NUMBER_OF_VENUES + '.csv'
+   var filename = CONFIG + '/init' + NUMBER_OF_VENUES + '.csv'
 
    if (fs.existsSync(filename)) {
       return loadPattern(filename)
@@ -286,14 +287,12 @@ function considerAwayCandidates(iweek, ivenue) {
       w.playing[team.id] = true
       setPlayed(home.id, team.id, true)
 
-      // console.log(['consider away: try (home, away) = ', home.id, team.id])
       w.assignments[v.id].away = team.id
 
       if (options.history && history.isDuplicate(home.id, team.id)) {
          duplicated++
          // console.log(['duplicated', duplicated, home.id, team.id])
       }
-
       homeSearch(iweek, ivenue)
 
       if (!found) {
@@ -323,9 +322,7 @@ function continueFromEmpty(week, ivenue, assignment, team, v, w) {
 
    assignment.empty = true
    v.recentHomeTeam = team.id
-
    homeSearch(week, ivenue)
-
    assignment.empty = false
    v.recentHomeTeam = recentHomeTeam
 }

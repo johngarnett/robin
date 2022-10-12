@@ -265,3 +265,93 @@ week	venue	home	away
 
 If you would like to assign a different venue to A, just enter your venues and teams
 in a different order.
+
+If some venues have only one team, just enter the single team for those. For example,
+
+    TDS ETB
+    WAT SHK
+    ADM ADB
+    RAY RMS
+
+The first column specifies the venue name and the second column is the team for that venue.
+
+## PAIRS
+
+The --pairs flag allows you to indicate a relationship between pairs of solo teams.
+This is useful in conjunction with the --sister flag which generates a week of
+matches between teams which share a venue. Teams paired up via --pairs are
+considered to share a venue for purposes of generating the homecoming / civil war
+week of the schedule.
+
+Here is the format of the pairs file.
+
+    ETB RMS
+    SHK ADB
+
+Here, (ETB, RMS) are paired and (SHK, ADB) are paired.
+
+## HISTORY
+
+The --history flag specifies a file containing a record of past matchups between the
+various teams. The scheduler will attempt to avoid repeating an exact matchup in which
+venue, home team, and away team all match a previous year. One way to avoid an exact
+matchup is to swap home and away as compared to the previous year so that the match is
+played at a different venue. Another way is to schedule a match against a fresh opponent,
+which is possible if a new team has been added or if a partial round robin was used in
+the previous year.
+
+Here is the format of the history file.
+
+    14      8BT     PGN     CDC
+    14      ANC     CPO     CRA
+    15      RAY     RMS     DSV
+    16      WAT     SHK     SKP
+
+The first column is the season number, the second is the venue, the third is the
+home team, and the fourth is the away team. Larger season numbers indicate more
+recent matchups.
+
+If a given matchup appears more than once in the history file, then only the matchup
+from the most recent season is retained.
+
+Specifying two or three past seasons is typically sufficient to produce a schedule
+that is fresh enough.
+
+## GROUPS
+
+The --groups flag allows teams to be split into two different groups. This is useful
+together with the --inter flag, which indicates that matchups should occur only
+between teams which are not in the same group. The -intra flag indicates that matchups
+should occur only between teams which are in the same group.
+
+The two groups should be equal in size, if possible. Each group must have an even number
+of teams.
+
+Here is the format of the groups file.
+
+NLT bumper
+TTT bumper
+RMS bumper
+SHK bumper
+SWL target
+PBR target
+CRA target
+CDC target
+
+The first column is the team name and the second column is the group name. You can choose
+whatever you like for the group names as long as only two unique names are used.
+
+The --groups, --inter, and --intra flags will work best in conjunction with a partial
+round robin schedule, by specifying fewer weeks in the schedule via --weeks. This
+gives the scheduler more degrees of freedom, which makes finding valid matchups easier.
+Otherwise, the scheduler may take too much time to find a schedule or may be unable
+to find one.
+
+Here is an example use of the --groups flag. This example is split across multiple
+lines for presentation purposes, but should all be on one line when entered on the
+command line. Using a shell script or command file makes it easier.
+
+    node robin.js --venues=16 --weeks=10 --groups=config/groups-mnp.csv
+       --names=config/names-mnp.csv --intra --brute --output=solution-mnp.csv
+       --history=config/history-mnp.csv --sister=last --mnp --duplicates=0
+       --pattern=config/pattern-mnp.csv --pairs=config/pairs-mnp.csv
