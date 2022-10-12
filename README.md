@@ -317,6 +317,22 @@ from the most recent season is retained.
 Specifying two or three past seasons is typically sufficient to produce a schedule
 that is fresh enough.
 
+The --duplicates flag works in conjunction with the --history flag. It specifies
+the maximum number of repeated matchups to be allowed in the new schedule.
+Ideally, you want the number of duplicates to be zero, so it is a good idea
+to start with --duplicates=0 to see if the scheduler can achieve it.
+
+If the scheduler does not find a schedule with zero duplicates, then try other
+low numbers. If your computer has multiple processors, try running the scheduler
+in more than one window with different thresholds for duplicates to find a
+solution faster.
+
+The power of the --duplicates flag is that it signficantly constrains the search
+space, allowing the scheduler to all discard branches of the search space early
+if they would cause the number of duplicate matchups to exceed the allowed threshold.
+This may allow the scheduler to find a valid schedule much more quickly than if
+the --duplicates flag is not used.
+
 ## GROUPS
 
 The --groups flag allows teams to be split into two different groups. This is useful
