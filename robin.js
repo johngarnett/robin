@@ -370,18 +370,25 @@ function sister() {
    for (var v = 0; v < NUMBER_OF_VENUES; v++) {
       var team = venues[v].teams[0]
 
-      if (team.solo && !already[team.id]) {
-         already[team.id] = true
-         already[pairs[team.id]] = true
-         makeSoloMatch(team, week)
+      if (team.solo) {
+         if (!already[team.id]) {
+            already[team.id] = true
+            already[pairs[team.id]] = true
+            makeSoloMatch(team, week)
+         }
          continue
       }
       var which = (venues[v].teams[0].home < venues[v].teams[1].home) ? 0 : 1
       var home = venues[v].teams[which].id
       var away = venues[v].teams[1 - which].id
 
-      week.assignments[v].home = home
-      week.assignments[v].away = away
+      if (history.isDuplicate(home, away)) {
+         week.assignments[v].home = away
+         week.assignments[v].away = home
+      } else {
+         week.assignments[v].home = home
+         week.assignments[v].away = away
+      }
    }
    if (options.sister == "last") {
       schedule.push(week)
@@ -395,10 +402,12 @@ function sister() {
       for (var v = 0; v < NUMBER_OF_VENUES; v++) {
          var team = venues[v].teams[0]
 
-         if (team.solo && !already2[team.id]) {
-            already[team.id] = true
-            already[pairs[team.id]] = true
-            makeSoloMatch(team, first)
+         if (team.solo) {
+            if (!already2[team.id]) {
+               already[team.id] = true
+               already[pairs[team.id]] = true
+               makeSoloMatch(team, first, true)
+            }
             continue
          }
          first.assignments[v].home = week.assignments[v].away
@@ -408,10 +417,15 @@ function sister() {
    }
 }
 
-function makeSoloMatch(team, week) {
+function makeSoloMatch(team, week, both) {
    var opponent = teams[pairs[team.id]]
-   
-   if (team.home > opponent.home) {
+   var repeat = history.isDuplicate(team.id, opponent.id)
+   var flip = (repeat || (team.home > opponent.home))
+
+   if (both) {
+      flip = !flip
+   }
+   if (flip) {
       week.assignments[opponent.ivenue].home = opponent.id
       week.assignments[opponent.ivenue].away = team.id
       week.assignments[opponent.ivenue].empty = false
