@@ -379,7 +379,7 @@ function sister() {
       var home = venues[v].teams[which].id
       var away = venues[v].teams[1 - which].id
 
-      if (history.isDuplicate(home, away)) {
+      if (options.history && history.isDuplicate(home, away)) {
          week.assignments[v].home = away
          week.assignments[v].away = home
       } else {
@@ -416,7 +416,7 @@ function sister() {
 
 function makeSoloMatch(team, week, both) {
    var opponent = teams[pairs[team.id]]
-   var repeat = history.isDuplicate(team.id, opponent.id)
+   var repeat = options.history && history.isDuplicate(team.id, opponent.id)
    var flip = (repeat || (team.home > opponent.home))
 
    if (both) {
@@ -709,8 +709,10 @@ function output(filename) {
 
             elements.push(teams[schedule[week].assignments[venue].away].group)
             elements.push(teams[schedule[week].assignments[venue].away].group == teams[schedule[week].assignments[venue].home].group)
-            elements.push(history.season(a.home, a.away))
-            elements.push(history.matchupQuality(a.home, a.away))
+            if (options.history) {
+               elements.push(history.season(a.home, a.away))
+               elements.push(history.matchupQuality(a.home, a.away))
+            }
          }
          var data = elements.join("\t")
 
