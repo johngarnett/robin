@@ -56,6 +56,23 @@ You can specify a different output file name via the --schedule flag.
 If you omit the --schedule flag, the schedule will be displayed on
 screen, but not written to a file.
 
+The output file will look something like this.
+
+```
+week	venue	home	away
+1	A	a2	b2
+1	B	b1	c1
+1	C	c2	d2
+1	D	d1	e1
+1	E	e2	a1
+2	A	a1	b1
+2	B	b2	c2
+2	C	c1	d1
+2	D	d2	e2
+2	E	e1	a2
+...
+```
+
 ## MNP FLAG
 
 If you are using this program to generate a schedule for Seattle's 
